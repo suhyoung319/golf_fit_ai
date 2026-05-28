@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Golf Fit AI — 골프 클럽 추천</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<header>
+  <span class="logo">⛳</span>
+  <div>
+    <h1>Golf Fit AI</h1>
+    <p>내 골프 실력에 맞는 클럽을 AI가 추천합니다</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── 입력 폼 ──────────────────────────────────────── -->
+  <section class="card form-card">
+    <h2 class="card-title">내 골프 정보 입력</h2>
+
+    <form id="recommend-form" novalidate>
+
+      <!-- 클럽 종류 선택 (가장 먼저, 가장 크게) -->
+      <div class="form-group">
+        <label for="club_type">추천받을 클럽 종류 <span class="required">*</span></label>
+        <div class="club-type-grid" id="club-type-grid">
+          <button type="button" class="club-type-btn" data-value="driver">
+            <span class="club-type-icon">🏌️</span>
+            <span class="club-type-label">드라이버</span>
+          </button>
+          <button type="button" class="club-type-btn" data-value="wood">
+            <span class="club-type-icon">🌲</span>
+            <span class="club-type-label">페어웨이 우드</span>
+          </button>
+          <button type="button" class="club-type-btn" data-value="utility">
+            <span class="club-type-icon">🔧</span>
+            <span class="club-type-label">유틸리티</span>
+          </button>
+          <button type="button" class="club-type-btn" data-value="iron">
+            <span class="club-type-icon">⚙️</span>
+            <span class="club-type-label">아이언</span>
+          </button>
+          <button type="button" class="club-type-btn" data-value="wedge">
+            <span class="club-type-icon">🎯</span>
+            <span class="club-type-label">웨지</span>
+          </button>
+          <button type="button" class="club-type-btn" data-value="putter">
+            <span class="club-type-icon">🕳️</span>
+            <span class="club-type-label">퍼터</span>
+          </button>
+        </div>
+        <input type="hidden" id="club_type" name="club_type" />
+        <p class="field-error" id="club-type-error">클럽 종류를 선택해주세요.</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 핸디캡 -->
+      <div class="form-group">
+        <label for="handicap">
+          핸디캡 <span class="required">*</span>
+          <span class="hint">(0~54 — 없으면 36 입력)</span>
+        </label>
+        <input
+          type="number" id="handicap" name="handicap"
+          min="0" max="54" placeholder="예: 20"
+          required
+        />
+        <p class="skill-auto-label" id="skill-auto-label"></p>
+      </div>
+
+      <!-- 평균 비거리 -->
+      <div class="form-group">
+        <label for="distance_avg">
+          드라이버 평균 비거리 <span class="required">*</span>
+          <span class="hint">(야드, 50~400)</span>
+        </label>
+        <input
+          type="number" id="distance_avg" name="distance_avg"
+          min="50" max="400" placeholder="예: 180"
+          required
+        />
+      </div>
+
+      <!-- 미스샷 유형 -->
+      <div class="form-group">
+        <label for="miss_shot_type">주요 미스샷 유형</label>
+        <select id="miss_shot_type" name="miss_shot_type">
+          <option value="none">없음 / 잘 모르겠어요</option>
+          <option value="slice">슬라이스 — 공이 오른쪽으로 휨</option>
+          <option value="hook">훅 — 공이 왼쪽으로 휨</option>
+          <option value="top">탑핑 — 공 위를 스침</option>
+          <option value="fat">뒤땅 — 공 뒤를 먼저 침</option>
+          <option value="push">푸시 — 오른쪽 직선</option>
+          <option value="pull">풀 — 왼쪽 직선</option>
+        </select>
+      </div>
+
+      <!-- 스윙 속도 -->
+      <div class="form-group">
+        <label for="swing_speed">스윙 속도</label>
+        <select id="swing_speed" name="swing_speed">
+          <option value="slow">느림 — 85mph 미만</option>
+          <option value="medium" selected>보통 — 85~95mph</option>
+          <option value="fast">빠름 — 95mph 초과</option>
+        </select>
+      </div>
+
+      <div id="error-box" class="error-box"></div>
+
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <span id="submit-label">클럽 추천받기</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+
+    </form>
+  </section>
+
+  <!-- ── 결과 영역 ──────────────────────────────────── -->
+  <section class="card result-card" id="result-section">
+    <h2 class="card-title">추천 결과</h2>
+
+    <!-- 사용자가 선택한 클럽 종류 + 세부 카테고리 -->
+    <div class="result-meta">
+      <div class="result-meta-item">
+        <span class="result-meta-label">선택한 클럽</span>
+        <span class="result-meta-value" id="result-club-type"></span>
+      </div>
+      <span class="result-meta-arrow">→</span>
+      <div class="result-meta-item">
+        <span class="result-meta-label">추천 카테고리</span>
+        <span class="result-meta-value category-highlight" id="result-category"></span>
+      </div>
+    </div>
+
+    <!-- 추천 이유 -->
+    <div class="reason-box" id="reason-text"></div>
+
+    <!-- 추천 클럽 리스트 -->
+    <div class="club-list" id="club-list"></div>
+  </section>
+
+</main>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

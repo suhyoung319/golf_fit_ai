@@ -1,0 +1,352 @@
+/* ── 리셋 & 기본 ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green:       #2d6a4f;
+  --green-light: #40916c;
+  --green-pale:  #d8f3dc;
+  --green-bg:    #f0faf3;
+  --gray-50:     #f8f9fa;
+  --gray-100:    #f1f3f5;
+  --gray-200:    #e9ecef;
+  --gray-300:    #dee2e6;
+  --gray-400:    #ced4da;
+  --gray-600:    #6c757d;
+  --gray-800:    #343a40;
+  --white:       #ffffff;
+  --red:         #e53e3e;
+  --red-pale:    #fff5f5;
+  --blue-pale:   #e8f4fd;
+  --blue:        #1565c0;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.10);
+  --radius:      10px;
+  --radius-lg:   16px;
+}
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  min-height: 100vh;
+}
+
+/* ── 헤더 ──────────────────────────────────────────────────── */
+header {
+  background: var(--green);
+  color: #fff;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+header .logo { font-size: 28px; }
+header h1    { font-size: 20px; font-weight: 700; }
+header p     { font-size: 13px; opacity: .8; margin-top: 2px; }
+
+/* ── 레이아웃 ──────────────────────────────────────────────── */
+main {
+  max-width: 980px;
+  margin: 32px auto;
+  padding: 0 16px;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; }
+}
+
+/* ── 카드 공통 ─────────────────────────────────────────────── */
+.card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 28px 24px;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 22px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--green-pale);
+}
+
+/* ── 클럽 타입 선택 버튼 그리드 ────────────────────────────── */
+.club-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.club-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 6px;
+  background: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+}
+
+.club-type-btn:hover {
+  border-color: var(--green-light);
+  background: var(--green-bg);
+}
+
+.club-type-btn.selected {
+  border-color: var(--green);
+  background: var(--green-pale);
+  box-shadow: 0 0 0 3px rgba(45,106,79,.12);
+}
+
+.club-type-icon  { font-size: 22px; line-height: 1; }
+.club-type-label { font-size: 12px; font-weight: 600; color: var(--gray-800); }
+
+/* 클럽타입 에러 메시지 */
+.field-error {
+  display: none;
+  font-size: 12px;
+  color: var(--red);
+  margin-top: 4px;
+}
+.field-error.visible { display: block; }
+
+/* ── 구분선 ────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: 16px 0;
+}
+
+/* ── 폼 요소 ───────────────────────────────────────────────── */
+.form-group { margin-bottom: 18px; }
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 6px;
+}
+
+.required { color: var(--red); margin-left: 1px; }
+.hint     { font-weight: 400; color: var(--gray-600); margin-left: 4px; font-size: 12px; }
+
+select, input[type="number"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--gray-800);
+  background: var(--white);
+  font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236c757d' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+select:focus, input[type="number"]:focus {
+  outline: none;
+  border-color: var(--green-light);
+  box-shadow: 0 0 0 3px rgba(64,145,108,.15);
+}
+
+/* 핸디캡 → 실력 자동 라벨 */
+.skill-auto-label {
+  font-size: 12px;
+  color: var(--green);
+  font-weight: 600;
+  margin-top: 5px;
+  min-height: 18px;
+}
+
+/* ── 제출 버튼 ─────────────────────────────────────────────── */
+.btn-submit {
+  width: 100%;
+  padding: 13px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  margin-top: 6px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-submit:hover    { background: var(--green-light); }
+.btn-submit:active   { transform: scale(.98); }
+.btn-submit:disabled { background: var(--gray-400); cursor: not-allowed; }
+
+/* ── 스피너 ───────────────────────────────────────────────── */
+.spinner {
+  display: none;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 에러 박스 ─────────────────────────────────────────────── */
+.error-box {
+  display: none;
+  background: var(--red-pale);
+  border-left: 4px solid var(--red);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #c53030;
+  margin-top: 10px;
+}
+
+/* ── 결과 영역 ─────────────────────────────────────────────── */
+#result-section { display: none; }
+
+/* 선택 클럽 → 추천 카테고리 메타 행 */
+.result-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.result-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-meta-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.result-meta-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.category-highlight { color: var(--green); }
+
+.result-meta-arrow {
+  font-size: 18px;
+  color: var(--gray-400);
+  font-weight: 300;
+}
+
+/* 추천 이유 배너 */
+.reason-box {
+  background: var(--green-pale);
+  border-left: 4px solid var(--green);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  color: #1b5438;
+}
+
+/* ── 클럽 카드 ─────────────────────────────────────────────── */
+.club-list { display: flex; flex-direction: column; gap: 12px; }
+
+.club-card {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: box-shadow .15s, border-color .15s;
+}
+
+.club-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--green-pale);
+}
+
+.club-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.club-rank {
+  width: 26px; height: 26px;
+  background: var(--green);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.club-brand { font-size: 11px; color: var(--gray-600); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.club-model { font-size: 16px; font-weight: 700; color: var(--gray-800); margin-top: 1px; }
+.club-desc  { font-size: 13px; color: var(--gray-600); line-height: 1.55; margin-bottom: 10px; }
+
+.club-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.tag-shaft { background: var(--gray-100); color: var(--gray-600); }
+.tag-loft  { background: var(--blue-pale); color: var(--blue); }
+.tag-price { background: var(--green-pale); color: var(--green); font-weight: 700; }
+
+/* ── 빈 결과 ───────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--gray-600);
+  font-size: 14px;
+  line-height: 1.7;
+}
