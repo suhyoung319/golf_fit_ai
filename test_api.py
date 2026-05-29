@@ -231,6 +231,43 @@ def validate_top3_response(body: dict[str, Any], expected_club_type: str) -> lis
             errors.append(f"{prefix}.matched_traits 누락")
         elif not isinstance(item["matched_traits"], list):
             errors.append(f"{prefix}.matched_traits 배열 아님")
+        clubs = item.get("clubs")
+        if not isinstance(clubs, list):
+            errors.append(f"{prefix}.clubs 배열 누락")
+            continue
+        if len(clubs) > 3:
+            errors.append(f"{prefix}.clubs 길이 {len(clubs)} > 3")
+        if not clubs:
+            errors.append(f"{prefix}.clubs 비어 있음")
+
+        for club_index, club in enumerate(clubs, start=1):
+            club_prefix = f"{prefix}.clubs[{club_index}]"
+            required_fields = [
+                "id",
+                "brand",
+                "model_name",
+                "club_type",
+                "category_id",
+                "shaft_type",
+                "forgiveness_score",
+                "distance_score",
+                "control_score",
+                "spin_score",
+            ]
+            for field in required_fields:
+                if field not in club:
+                    errors.append(f"{club_prefix}.{field} 누락")
+            if club.get("club_type") != expected_club_type:
+                errors.append(f"{club_prefix}.club_type 불일치: {club.get('club_type')}")
+            for score_field in [
+                "forgiveness_score",
+                "distance_score",
+                "control_score",
+                "spin_score",
+            ]:
+                score = club.get(score_field)
+                if not isinstance(score, int) or score < 0 or score > 100:
+                    errors.append(f"{club_prefix}.{score_field} 범위 오류: {score}")
 
     return errors
 

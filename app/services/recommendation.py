@@ -14,6 +14,7 @@ ML 확장 포인트:
   - 학습 데이터: (입력 프로필, matched_traits, score, 카테고리) 로그가 자연스러운 피처/레이블
   - scorer.py의 calc_score()만 ML 모델 추론으로 교체하면 나머지 구조는 그대로 유지
 """
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from app.models.club import Club, ClubCategory
 from app.schemas.user_input import (
@@ -44,16 +45,46 @@ TRAJ_SHAFT_MAP: dict[str, list[str]] = {
 }
 
 
-def _fetch_clubs(db: Session, category_id: int,
-                 shaft_candidates: list[str], limit: int = 3) -> list[ClubResponse]:
+def _fetch_clubs(
+    db: Session,
+    category: ClubCategory,
+    profile,
+    shaft_candidates: list[str],
+    limit: int = 3,
+) -> list[ClubResponse]:
+    score_order = (
+        Club.forgiveness_score
+        + Club.distance_score
+        + Club.control_score
+        + Club.spin_score
+    )
+
     clubs = (
         db.query(Club)
-        .filter(Club.category_id == category_id,
-                Club.shaft_type.in_(shaft_candidates))
-        .limit(limit).all()
+        .filter(
+            Club.category_id == category.id,
+            Club.club_type == category.club_type,
+            Club.club_type == profile.club_type,
+            Club.shaft_type.in_(shaft_candidates),
+            Club.target_handicap_min <= profile.handicap,
+            Club.target_handicap_max >= profile.handicap,
+        )
+        .order_by(desc(score_order))
+        .limit(limit)
+        .all()
     )
     if not clubs:
-        clubs = db.query(Club).filter(Club.category_id == category_id).limit(limit).all()
+        clubs = (
+            db.query(Club)
+            .filter(
+                Club.category_id == category.id,
+                Club.club_type == category.club_type,
+                Club.club_type == profile.club_type,
+            )
+            .order_by(desc(score_order))
+            .limit(limit)
+            .all()
+        )
     return [ClubResponse.model_validate(c) for c in clubs]
 
 
@@ -92,7 +123,7 @@ def _build_top3(
         if not category:
             continue  # DB 미등록 카테고리는 스킵
 
-        clubs  = _fetch_clubs(db, category.id, shaft_candidates)
+        clubs  = _fetch_clubs(db, category, profile, shaft_candidates)
         reason = build_reason(profile, cat_name, matched)
 
         items.append(RecommendationItem(

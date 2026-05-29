@@ -84,10 +84,21 @@ class ClubResponse(BaseModel):
     id:          int
     brand:       str
     model_name:  str
+    club_type:   str
+    category_id: int
     loft_angle:  Optional[str] = None
     shaft_type:  str
+    flex:        Optional[str] = None
+    forgiveness_score: int
+    distance_score:    int
+    control_score:     int
+    spin_score:        int
+    launch_type:       Optional[str] = None
+    target_handicap_min: Optional[int] = None
+    target_handicap_max: Optional[int] = None
     description: Optional[str] = None
     price_range: Optional[str] = None
+    purchase_url: Optional[str] = None
     model_config = {"from_attributes": True, "protected_namespaces": ()}
 
 

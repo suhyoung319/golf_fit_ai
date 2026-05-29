@@ -289,10 +289,14 @@ select:focus, input[type="number"]:focus {
 .club-brand      { font-size: 11px; color: var(--gray-600); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
 .club-model      { font-size: 14px; font-weight: 700; color: var(--gray-800); margin-top: 1px; }
 .club-desc       { font-size: 12px; color: var(--gray-600); line-height: 1.5; margin-bottom: 8px; }
+.club-specs      { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }
+.club-specs span { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 5px; color: var(--gray-700); font-size: 11px; font-weight: 600; padding: 4px 5px; text-align: center; }
 .club-meta       { display: flex; flex-wrap: wrap; gap: 5px; }
 .tag { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 5px; font-weight: 500; }
 .tag-shaft { background: var(--gray-100); color: var(--gray-600); }
 .tag-loft  { background: var(--blue-pale); color: var(--blue); }
 .tag-price { background: var(--green-pale); color: var(--green); font-weight: 700; }
+.club-link { display: inline-block; color: var(--blue); font-size: 12px; font-weight: 700; margin-top: 8px; text-decoration: none; }
+.club-link:hover { text-decoration: underline; }
 
 .empty-state { text-align: center; padding: 28px 16px; color: var(--gray-600); font-size: 14px; line-height: 1.7; }

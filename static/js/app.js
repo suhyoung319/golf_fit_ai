@@ -91,9 +91,21 @@ function renderClubs(clubs) {
   if (!clubs?.length) return `<p style="font-size:13px;color:var(--gray-600)">클럽 데이터 없음</p>`;
   return clubs.map((c, i) => {
     const shaft = SHAFT_KO[c.shaft_type] ?? c.shaft_type;
+    const flex  = c.flex ? `<span class="tag">플렉스 ${c.flex}</span>` : "";
     const loft  = c.loft_angle  ? `<span class="tag tag-loft">로프트 ${c.loft_angle}</span>` : "";
     const price = c.price_range ? `<span class="tag tag-price">💰 ${c.price_range}</span>` : "";
     const desc  = c.description ? `<p class="club-desc">${c.description}</p>` : "";
+    const launch = c.launch_type ? `<span class="tag">탄도 ${c.launch_type}</span>` : "";
+    const scores = `
+      <div class="club-specs">
+        <span>관용 ${c.forgiveness_score}</span>
+        <span>거리 ${c.distance_score}</span>
+        <span>컨트롤 ${c.control_score}</span>
+        <span>스핀 ${c.spin_score}</span>
+      </div>`;
+    const buy = c.purchase_url
+      ? `<a class="club-link" href="${c.purchase_url}" target="_blank" rel="noopener">구매 정보 보기</a>`
+      : "";
     return `
       <div class="club-card">
         <div class="club-header">
@@ -104,9 +116,11 @@ function renderClubs(clubs) {
           </div>
         </div>
         ${desc}
+        ${scores}
         <div class="club-meta">
-          <span class="tag tag-shaft">샤프트 ${shaft}</span>${loft}${price}
+          <span class="tag tag-shaft">샤프트 ${shaft}</span>${flex}${loft}${launch}${price}
         </div>
+        ${buy}
       </div>`;
   }).join("");
 }
