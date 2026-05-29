@@ -1,190 +1,328 @@
 """
-API 통합 테스트 — MySQL 연동 기준.
+Golf Fit AI API integration tests using the configured MySQL database.
 
-사전 조건:
-  1. MySQL 서버 실행 중
-  2. .env 파일에 DATABASE_URL 설정 완료
-  3. python seed_data.py 실행 완료
+Prerequisites:
+  1. MySQL server is running
+  2. DATABASE_URL is set in .env
+  3. Seed data is loaded with: python seed_data.py
 
-실행:
+Run:
   python test_api.py
 """
-import sys, os
-sys.path.insert(0, ".")
+import os
+import sys
+from typing import Any
+
+sys.path.insert(0, os.path.dirname(__file__) or ".")
 
 from dotenv import load_dotenv
-load_dotenv()
-
-# ── MySQL 엔진으로 앱 그대로 사용 ─────────────────────────────
-from app.db.database import Base, engine, get_db, SessionLocal
-import app.models  # 모든 모델 Base.metadata 등록
-
-from app.main import app
 from fastapi.testclient import TestClient
 
-client = TestClient(app)  # 실제 MySQL get_db 그대로 사용
+load_dotenv()
 
-# ── 테스트 러너 ───────────────────────────────────────────────
-results = []
+import app.models  # noqa: F401 - register all SQLAlchemy models on Base.metadata
+from app.db.database import SessionLocal
+from app.main import app
+from app.models.club import Club, ClubCategory
 
-def run(label, payload, expect_category=None, expect_status=200, expect_clubs_gte=0):
-    resp = client.post("/api/recommend", json=payload)
-    ok = (resp.status_code == expect_status)
-    body = {}
 
-    if ok and expect_status == 200:
+client = TestClient(app)
+results: list[bool] = []
+
+
+NORMAL_CASES: list[tuple[str, str, dict[str, Any]]] = [
+    (
+        "driver 정상 추천",
+        "driver",
+        {
+            "club_type": "driver",
+            "handicap": 28,
+            "driver_distance": 170,
+            "miss_shot": "slice",
+            "swing_speed": "slow",
+        },
+    ),
+    (
+        "wood 정상 추천",
+        "wood",
+        {
+            "club_type": "wood",
+            "handicap": 20,
+            "wood_distance": 200,
+            "fairway_miss": "thin",
+            "trajectory": "high",
+        },
+    ),
+    (
+        "utility 정상 추천",
+        "utility",
+        {
+            "club_type": "utility",
+            "handicap": 25,
+            "utility_distance": 180,
+            "long_iron_difficulty": "hard",
+            "trajectory": "high",
+        },
+    ),
+    (
+        "iron 정상 추천",
+        "iron",
+        {
+            "club_type": "iron",
+            "handicap": 18,
+            "iron_7_distance": 135,
+            "miss_shot": "duff",
+            "trajectory": "mid",
+        },
+    ),
+    (
+        "wedge 정상 추천",
+        "wedge",
+        {
+            "club_type": "wedge",
+            "handicap": 12,
+            "approach_distance": 80,
+            "wedge_miss": "chunk",
+            "spin_need": "high",
+        },
+    ),
+    (
+        "putter 정상 추천",
+        "putter",
+        {
+            "club_type": "putter",
+            "handicap": 8,
+            "putting_miss": "left",
+            "distance_control": "average",
+            "stroke_type": "arc",
+        },
+    ),
+]
+
+
+VALIDATION_CASES: list[tuple[str, str, dict[str, Any]]] = [
+    (
+        "handicap 누락",
+        "driver",
+        {
+            "club_type": "driver",
+            "driver_distance": 170,
+            "miss_shot": "slice",
+            "swing_speed": "slow",
+        },
+    ),
+    (
+        "driver 필수 필드 driver_distance 누락",
+        "driver",
+        {
+            "club_type": "driver",
+            "handicap": 28,
+            "miss_shot": "slice",
+            "swing_speed": "slow",
+        },
+    ),
+    (
+        "wood 필수 필드 wood_distance 누락",
+        "wood",
+        {
+            "club_type": "wood",
+            "handicap": 20,
+            "fairway_miss": "thin",
+            "trajectory": "high",
+        },
+    ),
+    (
+        "utility 필수 필드 utility_distance 누락",
+        "utility",
+        {
+            "club_type": "utility",
+            "handicap": 25,
+            "long_iron_difficulty": "hard",
+            "trajectory": "high",
+        },
+    ),
+    (
+        "iron 필수 필드 iron_7_distance 누락",
+        "iron",
+        {
+            "club_type": "iron",
+            "handicap": 18,
+            "miss_shot": "duff",
+            "trajectory": "mid",
+        },
+    ),
+    (
+        "wedge 필수 필드 approach_distance 누락",
+        "wedge",
+        {
+            "club_type": "wedge",
+            "handicap": 12,
+            "wedge_miss": "chunk",
+            "spin_need": "high",
+        },
+    ),
+    (
+        "putter 필수 필드 handicap 누락",
+        "putter",
+        {
+            "club_type": "putter",
+            "putting_miss": "left",
+            "distance_control": "average",
+            "stroke_type": "arc",
+        },
+    ),
+    (
+        "잘못된 enum 값",
+        "driver",
+        {
+            "club_type": "driver",
+            "handicap": 28,
+            "driver_distance": 170,
+            "miss_shot": "banana",
+            "swing_speed": "slow",
+        },
+    ),
+]
+
+
+def endpoint(club_type: str) -> str:
+    return f"/api/recommend/{club_type}"
+
+
+def print_validation_detail(resp) -> None:
+    detail = resp.json().get("detail", "")
+    if isinstance(detail, list):
+        messages = []
+        for item in detail:
+            loc = ".".join(str(part) for part in item.get("loc", []))
+            msg = item.get("msg", "")
+            messages.append(f"{loc}: {msg}" if loc else msg)
+        detail = " / ".join(messages)
+    print(f"      HTTP {resp.status_code}  {str(detail)[:180]}")
+
+
+def validate_top3_response(body: dict[str, Any], expected_club_type: str) -> list[str]:
+    errors: list[str] = []
+
+    if body.get("club_type") != expected_club_type:
+        errors.append(f"club_type 불일치: {body.get('club_type')}")
+    if "handicap" not in body:
+        errors.append("handicap 누락")
+    if "calculated_skill" not in body:
+        errors.append("calculated_skill 누락")
+
+    recommendations = body.get("recommendations")
+    if not isinstance(recommendations, list):
+        return errors + ["recommendations 배열 누락"]
+    if len(recommendations) != 3:
+        errors.append(f"recommendations 길이 {len(recommendations)} != 3")
+
+    for index, item in enumerate(recommendations, start=1):
+        prefix = f"recommendations[{index}]"
+        if item.get("rank") != index:
+            errors.append(f"{prefix}.rank 불일치")
+        if not item.get("category_name"):
+            errors.append(f"{prefix}.category_name 누락")
+        if "score" not in item:
+            errors.append(f"{prefix}.score 누락")
+        if not item.get("reason"):
+            errors.append(f"{prefix}.reason 누락")
+        if "matched_traits" not in item:
+            errors.append(f"{prefix}.matched_traits 누락")
+        elif not isinstance(item["matched_traits"], list):
+            errors.append(f"{prefix}.matched_traits 배열 아님")
+
+    return errors
+
+
+def print_recommendations(body: dict[str, Any]) -> None:
+    for item in body.get("recommendations", []):
+        print(
+            f"      {item.get('rank')}위 | "
+            f"{item.get('category_name')} | "
+            f"score={item.get('score')}"
+        )
+        print(f"          reason={item.get('reason')}")
+        print(f"          matched_traits={item.get('matched_traits', [])}")
+
+
+def run_success_case(label: str, club_type: str, payload: dict[str, Any]) -> None:
+    resp = client.post(endpoint(club_type), json=payload)
+    ok = resp.status_code == 200
+    body: dict[str, Any] = {}
+    errors: list[str] = []
+
+    if ok:
         body = resp.json()
-        if expect_category:
-            ok = ok and (body.get("category_name") == expect_category)
-        if expect_clubs_gte:
-            ok = ok and (len(body.get("clubs", [])) >= expect_clubs_gte)
+        errors = validate_top3_response(body, club_type)
+        ok = not errors
 
-    tag = "✅ PASS" if ok else "❌ FAIL"
     results.append(ok)
-    print(f"{tag}  {label}")
+    print(f"{'PASS' if ok else 'FAIL'}  {label}")
 
-    if expect_status == 200 and body:
-        print(f"      카테고리 : {body.get('category_name')}")
-        print(f"      추천 이유 : {body.get('reason')}")
-        for c in body.get("clubs", []):
-            print(f"        · {c['brand']} {c['model_name']}  "
-                  f"샤프트={c.get('shaft_type')}  {c.get('price_range')}")
-    elif expect_status != 200:
-        detail = resp.json().get("detail", "")
-        if isinstance(detail, list):
-            detail = " / ".join(d.get("msg", "") for d in detail)
-        print(f"      HTTP {resp.status_code}  {str(detail)[:100]}")
+    if resp.status_code != 200:
+        print_validation_detail(resp)
+    elif errors:
+        for error in errors:
+            print(f"      검증 실패: {error}")
+        print(f"      response={body}")
+    else:
+        print_recommendations(body)
     print()
 
 
-def check_db_connection():
-    """MySQL 연결 및 시드 데이터 확인."""
+def run_validation_case(label: str, club_type: str, payload: dict[str, Any]) -> None:
+    resp = client.post(endpoint(club_type), json=payload)
+    ok = resp.status_code == 422
+    results.append(ok)
+
+    print(f"{'PASS' if ok else 'FAIL'}  {label}")
+    print_validation_detail(resp)
+    print()
+
+
+def check_db_connection() -> None:
+    """Check MySQL connectivity and required seed data."""
+    db = None
     try:
         db = SessionLocal()
-        from app.models.club import ClubCategory, Club
-        cat_count  = db.query(ClubCategory).count()
+        cat_count = db.query(ClubCategory).count()
         club_count = db.query(Club).count()
-        db.close()
-        print(f"  DB 연결 성공 — 카테고리 {cat_count}개 / 클럽 {club_count}개")
-        if cat_count == 0:
-            print("  ⚠️  시드 데이터 없음. 먼저 'python seed_data.py'를 실행하세요.")
+        print(f"  DB 연결 성공 - 카테고리 {cat_count}개 / 클럽 {club_count}개")
+        if cat_count == 0 or club_count == 0:
+            print("  시드 데이터 없음. 먼저 'python seed_data.py'를 실행하세요.")
             sys.exit(1)
         print()
-        return True
-    except Exception as e:
-        print(f"  ❌ DB 연결 실패: {e}")
+    except Exception as exc:
+        print(f"  DB 연결 실패: {exc}")
         print("  .env 파일의 DATABASE_URL과 MySQL 서버 상태를 확인하세요.")
         sys.exit(1)
+    finally:
+        if db is not None:
+            db.close()
 
 
-def test_all():
+def test_all() -> None:
     print("=" * 65)
-    print("  Golf Fit AI — API 통합 테스트 (MySQL)")
+    print("  Golf Fit AI - API 통합 테스트 (MySQL)")
     print("=" * 65)
     print()
+
     print("[ DB 연결 확인 ]")
     check_db_connection()
 
-    # ── 정상 케이스 ───────────────────────────────────────────
-    print("[ 정상 케이스 ]\n")
+    print("[ club_type별 정상 케이스 ]\n")
+    for label, club_type, payload in NORMAL_CASES:
+        run_success_case(label, club_type, payload)
 
-    run("입문자 + 슬라이스 + slow → 고반발 드라이버",
-        {"skill_level": "beginner", "miss_shot_type": "slice",
-         "distance_avg": 150, "handicap": 36, "swing_speed": "slow"},
-        expect_category="고반발 드라이버", expect_clubs_gte=2)
-
-    run("입문자 + 탑핑 + slow → 페어웨이 우드",
-        {"skill_level": "beginner", "miss_shot_type": "top",
-         "distance_avg": 130, "handicap": 40, "swing_speed": "slow"},
-        expect_category="페어웨이 우드")
-
-    run("입문자 + 뒤땅 + slow → 하이브리드",
-        {"skill_level": "beginner", "miss_shot_type": "fat",
-         "distance_avg": 120, "handicap": 42, "swing_speed": "slow"},
-        expect_category="하이브리드", expect_clubs_gte=1)
-
-    run("아마추어 + 슬라이스 + medium → 드라이버",
-        {"skill_level": "amateur", "miss_shot_type": "slice",
-         "distance_avg": 180, "handicap": 24, "swing_speed": "medium"},
-        expect_category="드라이버", expect_clubs_gte=2)
-
-    run("아마추어 + 없음 + medium → 아이언 세트",
-        {"skill_level": "amateur", "miss_shot_type": "none",
-         "distance_avg": 190, "handicap": 20, "swing_speed": "medium"},
-        expect_category="아이언 세트", expect_clubs_gte=1)
-
-    run("중급자 + 뒤땅 + medium → 웨지",
-        {"skill_level": "intermediate", "miss_shot_type": "fat",
-         "distance_avg": 220, "handicap": 14, "swing_speed": "medium"},
-        expect_category="웨지", expect_clubs_gte=2)
-
-    run("상급자 + 없음 + fast → 포지드 아이언",
-        {"skill_level": "advanced", "miss_shot_type": "none",
-         "distance_avg": 290, "handicap": 3, "swing_speed": "fast"},
-        expect_category="포지드 아이언", expect_clubs_gte=2)
-
-    run("상급자 + 풀 + fast → 퍼터",
-        {"skill_level": "advanced", "miss_shot_type": "pull",
-         "distance_avg": 280, "handicap": 5, "swing_speed": "fast"},
-        expect_category="퍼터", expect_clubs_gte=1)
-
-    run("핸디캡 null 허용",
-        {"skill_level": "amateur", "miss_shot_type": "hook",
-         "distance_avg": 170, "swing_speed": "medium"},
-        expect_category="드라이버")
-
-    # ── 엣지 케이스 ───────────────────────────────────────────
-    print("[ 엣지 케이스 ]\n")
-
-    run("비거리 최솟값 50야드",
-        {"skill_level": "beginner", "miss_shot_type": "none",
-         "distance_avg": 50, "swing_speed": "slow"},
-        expect_category="고반발 드라이버")
-
-    run("비거리 최댓값 400야드",
-        {"skill_level": "advanced", "miss_shot_type": "none",
-         "distance_avg": 400, "swing_speed": "fast"},
-        expect_category="포지드 아이언")
-
-    run("핸디캡 0 허용",
-        {"skill_level": "advanced", "miss_shot_type": "none",
-         "distance_avg": 300, "handicap": 0, "swing_speed": "fast"},
-        expect_category="포지드 아이언")
-
-    # ── 유효성 검사 실패 (422) ────────────────────────────────
     print("[ 유효성 검사 실패 (HTTP 422 기대) ]\n")
+    for label, club_type, payload in VALIDATION_CASES:
+        run_validation_case(label, club_type, payload)
 
-    run("비거리 500야드 초과",
-        {"skill_level": "beginner", "miss_shot_type": "none",
-         "distance_avg": 500, "swing_speed": "slow"},
-        expect_status=422)
-
-    run("비거리 음수",
-        {"skill_level": "amateur", "miss_shot_type": "none",
-         "distance_avg": -1, "swing_speed": "medium"},
-        expect_status=422)
-
-    run("핸디캡 55 초과",
-        {"skill_level": "beginner", "miss_shot_type": "none",
-         "distance_avg": 150, "handicap": 55, "swing_speed": "slow"},
-        expect_status=422)
-
-    run("잘못된 skill_level 값 'pro'",
-        {"skill_level": "pro", "miss_shot_type": "none",
-         "distance_avg": 200, "swing_speed": "medium"},
-        expect_status=422)
-
-    run("필수 필드 distance_avg 누락",
-        {"skill_level": "amateur", "miss_shot_type": "none",
-         "swing_speed": "medium"},
-        expect_status=422)
-
-    # ── 결과 요약 ─────────────────────────────────────────────
     passed = sum(results)
-    total  = len(results)
+    total = len(results)
     print("=" * 65)
-    print(f"  결과: {passed}/{total} 통과  "
-          f"{'✅ 전체 통과' if passed == total else f'❌ {total - passed}건 실패'}")
+    print(f"  결과: {passed}/{total} 통과  {'전체 통과' if passed == total else f'{total - passed}건 실패'}")
     print("=" * 65)
 
 
