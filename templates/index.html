@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Golf Fit AI — 골프 클럽 추천</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+<header>
+  <span class="logo">⛳</span>
+  <div>
+    <h1>Golf Fit AI</h1>
+    <p>클럽 종류를 선택하면 나에게 맞는 Top 3를 추천합니다</p>
+  </div>
+</header>
+
+<main>
+  <!-- ── 입력 폼 ── -->
+  <section class="card form-card">
+    <h2 class="card-title">클럽 추천 받기</h2>
+
+    <div class="step-label">STEP 1 &nbsp;추천받을 클럽 종류</div>
+    <div class="club-type-grid" id="club-type-grid">
+      <button type="button" class="club-type-btn" data-value="driver">
+        <span class="ct-icon">🏌️</span><span class="ct-label">드라이버</span>
+      </button>
+      <button type="button" class="club-type-btn" data-value="wood">
+        <span class="ct-icon">🌲</span><span class="ct-label">페어웨이 우드</span>
+      </button>
+      <button type="button" class="club-type-btn" data-value="utility">
+        <span class="ct-icon">🔧</span><span class="ct-label">유틸리티</span>
+      </button>
+      <button type="button" class="club-type-btn" data-value="iron">
+        <span class="ct-icon">⚙️</span><span class="ct-label">아이언</span>
+      </button>
+      <button type="button" class="club-type-btn" data-value="wedge">
+        <span class="ct-icon">🎯</span><span class="ct-label">웨지</span>
+      </button>
+      <button type="button" class="club-type-btn" data-value="putter">
+        <span class="ct-icon">🕳️</span><span class="ct-label">퍼터</span>
+      </button>
+    </div>
+    <p class="field-error" id="club-type-error">클럽 종류를 선택해주세요.</p>
+
+    <div id="dynamic-form-area" style="display:none;">
+      <div class="divider"></div>
+      <div class="step-label">STEP 2 &nbsp;상세 정보 입력</div>
+
+      <form id="recommend-form" novalidate>
+        <input type="hidden" id="club_type" name="club_type" />
+
+        <!-- 공통: 핸디캡 -->
+        <div class="form-group">
+          <label for="handicap">핸디캡 <span class="required">*</span>
+            <span class="hint">(0~54 / 모르면 36 입력)</span>
+          </label>
+          <input type="number" id="handicap" name="handicap"
+                 min="0" max="54" placeholder="예: 20" required />
+          <p class="skill-auto-label" id="skill-auto-label"></p>
+        </div>
+
+        <!-- 드라이버 -->
+        <div class="sub-form" id="form-driver">
+          <div class="form-group">
+            <label>드라이버 평균 비거리 <span class="required">*</span><span class="hint">(야드, 50~400)</span></label>
+            <input type="number" name="driver_distance" min="50" max="400" placeholder="예: 200" />
+          </div>
+          <div class="form-group">
+            <label>주요 미스샷</label>
+            <select name="miss_shot">
+              <option value="none">없음</option>
+              <option value="slice">슬라이스 — 오른쪽으로 휨</option>
+              <option value="hook">훅 — 왼쪽으로 휨</option>
+              <option value="high">탄도가 너무 높음</option>
+              <option value="low">탄도가 너무 낮음</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>스윙 속도</label>
+            <select name="swing_speed">
+              <option value="slow">느림 (85mph 미만)</option>
+              <option value="medium" selected>보통 (85~95mph)</option>
+              <option value="fast">빠름 (95mph 이상)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 페어웨이 우드 -->
+        <div class="sub-form" id="form-wood">
+          <div class="form-group">
+            <label>페어웨이 우드 평균 비거리 <span class="required">*</span><span class="hint">(야드, 30~300)</span></label>
+            <input type="number" name="wood_distance" min="30" max="300" placeholder="예: 200" />
+          </div>
+          <div class="form-group">
+            <label>주요 미스 유형</label>
+            <select name="fairway_miss">
+              <option value="none">없음</option>
+              <option value="thin">얇게 맞음</option>
+              <option value="fat">뒤땅</option>
+              <option value="left">왼쪽으로 빠짐</option>
+              <option value="right">오른쪽으로 빠짐</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>선호 탄도</label>
+            <select name="trajectory">
+              <option value="low">낮은 탄도</option>
+              <option value="mid" selected>중간 탄도</option>
+              <option value="high">높은 탄도</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 유틸리티 -->
+        <div class="sub-form" id="form-utility">
+          <div class="form-group">
+            <label>유틸리티 평균 비거리 <span class="required">*</span><span class="hint">(야드, 30~280)</span></label>
+            <input type="number" name="utility_distance" min="30" max="280" placeholder="예: 190" />
+          </div>
+          <div class="form-group">
+            <label>롱아이언(3·4번) 사용 난이도</label>
+            <select name="long_iron_difficulty">
+              <option value="very_hard">매우 어려움</option>
+              <option value="hard" selected>어려움</option>
+              <option value="ok">무난함</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>선호 탄도</label>
+            <select name="trajectory">
+              <option value="low">낮은 탄도</option>
+              <option value="mid" selected>중간 탄도</option>
+              <option value="high">높은 탄도</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 아이언 -->
+        <div class="sub-form" id="form-iron">
+          <div class="form-group">
+            <label>7번 아이언 평균 비거리 <span class="required">*</span><span class="hint">(야드, 50~220)</span></label>
+            <input type="number" name="iron_7_distance" min="50" max="220" placeholder="예: 140" />
+          </div>
+          <div class="form-group">
+            <label>주요 미스샷</label>
+            <select name="miss_shot">
+              <option value="none">없음</option>
+              <option value="top">탑핑</option>
+              <option value="duff">뒤땅</option>
+              <option value="pull">풀 (왼쪽 직선)</option>
+              <option value="push">푸시 (오른쪽 직선)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>선호 탄도</label>
+            <select name="trajectory">
+              <option value="low">낮은 탄도</option>
+              <option value="mid" selected>중간 탄도</option>
+              <option value="high">높은 탄도</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 웨지 -->
+        <div class="sub-form" id="form-wedge">
+          <div class="form-group">
+            <label>주요 어프로치 거리 <span class="required">*</span><span class="hint">(야드, 10~150)</span></label>
+            <input type="number" name="approach_distance" min="10" max="150" placeholder="예: 80" />
+          </div>
+          <div class="form-group">
+            <label>주요 웨지 미스</label>
+            <select name="wedge_miss">
+              <option value="none">없음</option>
+              <option value="short">짧게 떨어짐</option>
+              <option value="long">길게 넘어감</option>
+              <option value="skull">스컬 (얇게 맞음)</option>
+              <option value="chunk">청크 (뒤땅)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>스핀 필요도</label>
+            <select name="spin_need">
+              <option value="low">낮음 — 런 어프로치 위주</option>
+              <option value="medium" selected>중간</option>
+              <option value="high">높음 — 피치·로브샷 위주</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 퍼터 -->
+        <div class="sub-form" id="form-putter">
+          <div class="form-group">
+            <label>주요 퍼팅 미스 방향</label>
+            <select name="putting_miss">
+              <option value="none">없음</option>
+              <option value="short">짧게 멈춤</option>
+              <option value="long">길게 지나침</option>
+              <option value="left">왼쪽으로 빠짐</option>
+              <option value="right">오른쪽으로 빠짐</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>거리감 수준</label>
+            <select name="distance_control">
+              <option value="poor">부족</option>
+              <option value="average" selected>보통</option>
+              <option value="good">양호</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>스트로크 타입</label>
+            <select name="stroke_type">
+              <option value="arc" selected>아크 스트로크</option>
+              <option value="straight">직선 스트로크</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="error-box" class="error-box"></div>
+        <button type="submit" class="btn-submit" id="submit-btn">
+          <span id="submit-label">Top 3 추천받기</span>
+          <div class="spinner" id="spinner"></div>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── 결과 영역 ── -->
+  <section class="card result-card" id="result-section">
+    <h2 class="card-title">Rule 기반 추천 Top3</h2>
+
+    <!-- 요약 정보 -->
+    <div class="result-summary">
+      <div class="result-summary-item">
+        <span class="result-summary-label">선택 클럽</span>
+        <span class="result-summary-value" id="res-club-type"></span>
+      </div>
+      <span class="result-summary-sep">|</span>
+      <div class="result-summary-item">
+        <span class="result-summary-label">핸디캡</span>
+        <span class="result-summary-value" id="res-handicap"></span>
+      </div>
+      <span class="result-summary-sep">|</span>
+      <div class="result-summary-item">
+        <span class="result-summary-label">실력</span>
+        <span class="result-summary-value" id="res-skill"></span>
+      </div>
+    </div>
+
+    <div class="ml-result-card" id="ml-result-card"></div>
+
+    <!-- Top3 카드 목록 -->
+    <div class="top3-list" id="top3-list"></div>
+  </section>
+</main>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
