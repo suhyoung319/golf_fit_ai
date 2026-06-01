@@ -28,6 +28,8 @@ htmlcov/
 *.sqlite3
 *.db
 *.sql
+data/*.csv
+models/*.joblib
 
 # IDE and OS files
 .vscode/

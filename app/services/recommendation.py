@@ -24,6 +24,7 @@ from app.schemas.user_input import (
 )
 from app.services.scorer import calc_score
 from app.services.reason_builder import build_reason
+from app.services.ml_recommendation import predict_category
 
 
 # ── 공통 유틸 ─────────────────────────────────────────────────────
@@ -33,58 +34,33 @@ def _calc_skill(handicap: int) -> str:
     if handicap >= 10: return "intermediate"
     return "advanced"
 
-SHAFT_MAP: dict[str, list[str]] = {
-    "slow":   ["senior", "ladies", "regular"],
-    "medium": ["regular", "stiff"],
-    "fast":   ["stiff", "extra_stiff"],
-}
-TRAJ_SHAFT_MAP: dict[str, list[str]] = {
-    "low":  ["stiff", "extra_stiff"],
-    "mid":  ["regular", "stiff"],
-    "high": ["senior", "regular"],
-}
-
-
 def _fetch_clubs(
     db: Session,
     category: ClubCategory,
     profile,
-    shaft_candidates: list[str],
     limit: int = 3,
 ) -> list[ClubResponse]:
-    score_order = (
-        Club.forgiveness_score
-        + Club.distance_score
-        + Club.control_score
-        + Club.spin_score
-    )
+    if profile.club_type == "wedge":
+        order_by = [desc(Club.spin_score), desc(Club.control_score)]
+    elif profile.club_type == "putter":
+        order_by = [desc(Club.control_score), desc(Club.forgiveness_score)]
+    else:
+        order_by = [
+            desc(Club.forgiveness_score),
+            desc(Club.distance_score),
+            desc(Club.control_score),
+        ]
 
     clubs = (
         db.query(Club)
         .filter(
             Club.category_id == category.id,
-            Club.club_type == category.club_type,
             Club.club_type == profile.club_type,
-            Club.shaft_type.in_(shaft_candidates),
-            Club.target_handicap_min <= profile.handicap,
-            Club.target_handicap_max >= profile.handicap,
         )
-        .order_by(desc(score_order))
+        .order_by(*order_by)
         .limit(limit)
         .all()
     )
-    if not clubs:
-        clubs = (
-            db.query(Club)
-            .filter(
-                Club.category_id == category.id,
-                Club.club_type == category.club_type,
-                Club.club_type == profile.club_type,
-            )
-            .order_by(desc(score_order))
-            .limit(limit)
-            .all()
-        )
     return [ClubResponse.model_validate(c) for c in clubs]
 
 
@@ -96,7 +72,6 @@ def _build_top3(
     profile,
     db: Session,
     candidates: list[str],          # 이 club_type에서 가능한 카테고리명 목록
-    shaft_candidates: list[str],
 ) -> Top3Response:
     """
     후보 카테고리 목록을 점수화 → Top3 선택 → 클럽 조회 → 응답 조립.
@@ -123,7 +98,7 @@ def _build_top3(
         if not category:
             continue  # DB 미등록 카테고리는 스킵
 
-        clubs  = _fetch_clubs(db, category, profile, shaft_candidates)
+        clubs  = _fetch_clubs(db, category, profile)
         reason = build_reason(profile, cat_name, matched)
 
         items.append(RecommendationItem(
@@ -136,10 +111,21 @@ def _build_top3(
         ))
         rank += 1
 
+    rule_top1 = items[0].category_name if items else None
+    ml_prediction = predict_category(profile)
+    ml_agreement = (
+        None
+        if ml_prediction is None
+        else ml_prediction.get("category_name") == rule_top1
+    )
+
     return Top3Response(
         club_type=profile.club_type,
         handicap=profile.handicap,
         calculated_skill=skill,
+        rule_top1=rule_top1,
+        ml_prediction=ml_prediction,
+        ml_agreement=ml_agreement,
         recommendations=items,
     )
 
@@ -149,8 +135,7 @@ def _build_top3(
 _DRIVER_CANDIDATES = ["고반발 드라이버", "슬라이스 보정 드라이버", "드라이버", "투어 드라이버"]
 
 def recommend_driver(profile: DriverInput, db: Session) -> Top3Response:
-    shafts = SHAFT_MAP.get(profile.swing_speed, ["regular"])
-    return _build_top3(profile, db, _DRIVER_CANDIDATES, shafts)
+    return _build_top3(profile, db, _DRIVER_CANDIDATES)
 
 
 # ── 페어웨이 우드 ─────────────────────────────────────────────────
@@ -158,8 +143,7 @@ def recommend_driver(profile: DriverInput, db: Session) -> Top3Response:
 _WOOD_CANDIDATES = ["페어웨이 우드", "로우스핀 우드", "고탄도 우드"]
 
 def recommend_wood(profile: WoodInput, db: Session) -> Top3Response:
-    shafts = TRAJ_SHAFT_MAP.get(profile.trajectory, ["regular"])
-    return _build_top3(profile, db, _WOOD_CANDIDATES, shafts)
+    return _build_top3(profile, db, _WOOD_CANDIDATES)
 
 
 # ── 유틸리티 ─────────────────────────────────────────────────────
@@ -167,8 +151,7 @@ def recommend_wood(profile: WoodInput, db: Session) -> Top3Response:
 _UTILITY_CANDIDATES = ["하이브리드", "로우스핀 유틸", "고탄도 유틸"]
 
 def recommend_utility(profile: UtilityInput, db: Session) -> Top3Response:
-    shafts = TRAJ_SHAFT_MAP.get(profile.trajectory, ["regular"])
-    return _build_top3(profile, db, _UTILITY_CANDIDATES, shafts)
+    return _build_top3(profile, db, _UTILITY_CANDIDATES)
 
 
 # ── 아이언 ───────────────────────────────────────────────────────
@@ -176,8 +159,7 @@ def recommend_utility(profile: UtilityInput, db: Session) -> Top3Response:
 _IRON_CANDIDATES = ["아이언 세트", "포지드 아이언", "게임 임프루브먼트 아이언"]
 
 def recommend_iron(profile: IronInput, db: Session) -> Top3Response:
-    shafts = TRAJ_SHAFT_MAP.get(profile.trajectory, ["regular"])
-    return _build_top3(profile, db, _IRON_CANDIDATES, shafts)
+    return _build_top3(profile, db, _IRON_CANDIDATES)
 
 
 # ── 웨지 ─────────────────────────────────────────────────────────
@@ -185,9 +167,7 @@ def recommend_iron(profile: IronInput, db: Session) -> Top3Response:
 _WEDGE_CANDIDATES = ["웨지", "로브 웨지", "갭 웨지"]
 
 def recommend_wedge(profile: WedgeInput, db: Session) -> Top3Response:
-    spin_shaft = {"high": ["stiff","extra_stiff"], "medium": ["stiff"], "low": ["regular","stiff"]}
-    shafts = spin_shaft.get(profile.spin_need, ["stiff"])
-    return _build_top3(profile, db, _WEDGE_CANDIDATES, shafts)
+    return _build_top3(profile, db, _WEDGE_CANDIDATES)
 
 
 # ── 퍼터 ─────────────────────────────────────────────────────────
@@ -195,7 +175,7 @@ def recommend_wedge(profile: WedgeInput, db: Session) -> Top3Response:
 _PUTTER_CANDIDATES = ["퍼터", "말렛 퍼터", "블레이드 퍼터"]
 
 def recommend_putter(profile: PutterInput, db: Session) -> Top3Response:
-    return _build_top3(profile, db, _PUTTER_CANDIDATES, ["regular"])
+    return _build_top3(profile, db, _PUTTER_CANDIDATES)
 
 
 # ── 디스패처 ─────────────────────────────────────────────────────

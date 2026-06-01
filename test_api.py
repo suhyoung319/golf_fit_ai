@@ -210,12 +210,46 @@ def validate_top3_response(body: dict[str, Any], expected_club_type: str) -> lis
         errors.append("handicap 누락")
     if "calculated_skill" not in body:
         errors.append("calculated_skill 누락")
+    if "rule_top1" not in body:
+        errors.append("rule_top1 누락")
+    if "ml_agreement" not in body:
+        errors.append("ml_agreement 키 누락")
+    if "ml_prediction" not in body:
+        errors.append("ml_prediction 키 누락")
+    elif body["ml_prediction"] is not None:
+        ml_prediction = body["ml_prediction"]
+        if not isinstance(ml_prediction, dict):
+            errors.append("ml_prediction 객체 아님")
+        else:
+            if not ml_prediction.get("category_name"):
+                errors.append("ml_prediction.category_name 누락")
+            confidence = ml_prediction.get("confidence")
+            if confidence is None:
+                errors.append("ml_prediction.confidence 누락")
+            elif not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
+                errors.append(f"ml_prediction.confidence 범위 오류: {confidence}")
+    elif body.get("ml_agreement") is not None:
+        errors.append("ml_prediction이 null이면 ml_agreement도 null이어야 함")
 
     recommendations = body.get("recommendations")
     if not isinstance(recommendations, list):
         return errors + ["recommendations 배열 누락"]
     if len(recommendations) != 3:
         errors.append(f"recommendations 길이 {len(recommendations)} != 3")
+    elif body.get("rule_top1") != recommendations[0].get("category_name"):
+        errors.append(
+            "rule_top1 불일치: "
+            f"{body.get('rule_top1')} != {recommendations[0].get('category_name')}"
+        )
+
+    ml_prediction = body.get("ml_prediction")
+    if isinstance(ml_prediction, dict):
+        expected_agreement = ml_prediction.get("category_name") == body.get("rule_top1")
+        if body.get("ml_agreement") != expected_agreement:
+            errors.append(
+                "ml_agreement 불일치: "
+                f"{body.get('ml_agreement')} != {expected_agreement}"
+            )
 
     for index, item in enumerate(recommendations, start=1):
         prefix = f"recommendations[{index}]"
@@ -237,25 +271,19 @@ def validate_top3_response(body: dict[str, Any], expected_club_type: str) -> lis
             continue
         if len(clubs) > 3:
             errors.append(f"{prefix}.clubs 길이 {len(clubs)} > 3")
-        if not clubs:
+        if len(clubs) == 0:
             errors.append(f"{prefix}.clubs 비어 있음")
 
         for club_index, club in enumerate(clubs, start=1):
             club_prefix = f"{prefix}.clubs[{club_index}]"
             required_fields = [
-                "id",
                 "brand",
                 "model_name",
                 "club_type",
-                "category_id",
-                "shaft_type",
-                "forgiveness_score",
-                "distance_score",
-                "control_score",
-                "spin_score",
+                "price_range",
             ]
             for field in required_fields:
-                if field not in club:
+                if not club.get(field):
                     errors.append(f"{club_prefix}.{field} 누락")
             if club.get("club_type") != expected_club_type:
                 errors.append(f"{club_prefix}.club_type 불일치: {club.get('club_type')}")
@@ -281,6 +309,17 @@ def print_recommendations(body: dict[str, Any]) -> None:
         )
         print(f"          reason={item.get('reason')}")
         print(f"          matched_traits={item.get('matched_traits', [])}")
+        clubs = item.get("clubs", [])
+        if clubs:
+            print("          추천 클럽:")
+            for club in clubs:
+                print(
+                    f"          - {club.get('brand')} {club.get('model_name')} / "
+                    f"{club.get('price_range')} / "
+                    f"forgiveness={club.get('forgiveness_score')}"
+                )
+        else:
+            print("          추천 클럽: []")
 
 
 def run_success_case(label: str, club_type: str, payload: dict[str, Any]) -> None:

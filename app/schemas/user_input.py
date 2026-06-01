@@ -112,9 +112,18 @@ class RecommendationItem(BaseModel):
     clubs:          List[ClubResponse]
 
 
+class MLPrediction(BaseModel):
+    """ML 보조 예측 결과. 모델 파일이 없으면 응답에서는 null."""
+    category_name: str
+    confidence:    Optional[float] = None
+
+
 class Top3Response(BaseModel):
     """최종 API 응답 — Top3 추천 목록 포함."""
     club_type:        str
     handicap:         int
     calculated_skill: str                # handicap 기반 자동 계산값
+    rule_top1:        Optional[str] = None
+    ml_prediction:    Optional[MLPrediction] = None
+    ml_agreement:     Optional[bool] = None
     recommendations:  List[RecommendationItem]
