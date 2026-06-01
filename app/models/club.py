@@ -64,3 +64,8 @@ class Club(Base):
     purchase_url = Column(String(500), nullable=True)
 
     category = relationship("ClubCategory", back_populates="clubs")
+    prices = relationship(
+        "ClubPrice",
+        back_populates="club",
+        cascade="all, delete-orphan",
+    )

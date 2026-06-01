@@ -357,6 +357,45 @@ def run_validation_case(label: str, club_type: str, payload: dict[str, Any]) -> 
     print()
 
 
+def run_price_cases() -> None:
+    db = SessionLocal()
+    try:
+        club = db.query(Club).order_by(Club.id.asc()).first()
+    finally:
+        db.close()
+
+    if not club:
+        results.append(False)
+        print("FAIL  클럽 가격 목록 조회")
+        print("      테스트할 클럽 데이터가 없습니다.")
+        print()
+        return
+
+    resp = client.get(f"/api/clubs/{club.id}/prices")
+    ok = resp.status_code == 200
+    prices = resp.json() if ok else []
+    if ok:
+        price_values = [item.get("price") for item in prices]
+        ok = (
+            len(prices) >= 2
+            and price_values == sorted(price_values)
+            and all(item.get("club_id") == club.id for item in prices)
+        )
+    results.append(ok)
+    print(f"{'PASS' if ok else 'FAIL'}  클럽 가격 목록 조회")
+    if not ok:
+        print(f"      HTTP {resp.status_code} response={prices}")
+    print()
+
+    missing_resp = client.get("/api/clubs/999999999/prices")
+    missing_ok = missing_resp.status_code == 404
+    results.append(missing_ok)
+    print(f"{'PASS' if missing_ok else 'FAIL'}  존재하지 않는 클럽 가격 404")
+    if not missing_ok:
+        print_validation_detail(missing_resp)
+    print()
+
+
 def check_db_connection() -> None:
     """Check MySQL connectivity and required seed data."""
     db = None
@@ -394,6 +433,9 @@ def test_all() -> None:
     print("[ 유효성 검사 실패 (HTTP 422 기대) ]\n")
     for label, club_type, payload in VALIDATION_CASES:
         run_validation_case(label, club_type, payload)
+
+    print("[ 클럽 최저가 API ]\n")
+    run_price_cases()
 
     passed = sum(results)
     total = len(results)

@@ -8,6 +8,8 @@
   기존 테이블에 새 컬럼이 없다면 먼저 README/최종 안내의 ALTER TABLE SQL을 실행하거나
   개발 DB에서 테이블을 재생성한 뒤 실행하세요.
 """
+import re
+
 from app.db.database import Base, SessionLocal, engine
 import app.models  # noqa: F401 - Base.metadata 모델 등록
 
@@ -17,9 +19,11 @@ def seed():
     db = SessionLocal()
     try:
         from app.models.club import Club, ClubCategory, ClubType, ShaftType
+        from app.models.club_price import ClubPrice
 
         if db.query(ClubCategory).count() > 0:
             print("기존 데이터 삭제 후 재삽입...")
+            db.query(ClubPrice).delete()
             db.query(Club).delete()
             db.query(ClubCategory).delete()
             db.commit()
@@ -161,8 +165,40 @@ def seed():
         ]
 
         db.add_all(clubs)
+        db.flush()
+
+        def price_values(price_range):
+            numbers = [int(n) for n in re.findall(r"\d+", price_range or "30")]
+            low = numbers[0] * 10000
+            high = (numbers[1] if len(numbers) > 1 else numbers[0] + 10) * 10000
+            mid = (low + high) // 2
+            return [
+                max(10000, low - 20000),
+                mid,
+                high + 15000,
+            ]
+
+        sellers = [
+            ("골프존마켓", "공식 정품"),
+            ("AK골프", "특가"),
+            ("11번가 골프", "무료배송"),
+        ]
+
+        prices = []
+        for club_obj in clubs:
+            for (seller_name, label), price in zip(sellers, price_values(club_obj.price_range)):
+                query = f"{seller_name} {club_obj.brand} {club_obj.model_name}".replace(" ", "+")
+                prices.append(ClubPrice(
+                    club_id=club_obj.id,
+                    seller_name=seller_name,
+                    product_name=f"{club_obj.brand} {club_obj.model_name} {label}",
+                    price=price,
+                    product_url=f"https://www.google.com/search?q={query}",
+                ))
+
+        db.add_all(prices)
         db.commit()
-        print(f"시드 완료: {len(categories)}개 카테고리 / {len(clubs)}개 클럽")
+        print(f"시드 완료: {len(categories)}개 카테고리 / {len(clubs)}개 클럽 / {len(prices)}개 가격")
 
     except Exception as exc:
         db.rollback()

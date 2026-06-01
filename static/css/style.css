@@ -190,6 +190,83 @@ select:focus, input[type="number"]:focus {
 .skill-badge.advanced    { background: #fce4ec; color: #c62828; }
 .result-summary-sep { color: var(--gray-300); font-size: 18px; }
 
+.ml-result-card {
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--blue);
+  border-radius: var(--radius);
+  background: #f8fbff;
+  margin-bottom: 18px;
+  padding: 13px 14px;
+}
+.ml-result-card.agree {
+  border-left-color: var(--green);
+  background: var(--green-bg);
+}
+.ml-result-card.disagree {
+  border-left-color: var(--gold);
+  background: var(--gold-pale);
+}
+.ml-result-card.unavailable {
+  border-left-color: var(--gray-400);
+  background: var(--gray-100);
+}
+.ml-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ml-title-row h3 {
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 800;
+}
+.ml-agreement {
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+.ml-agreement.agree { background: var(--green-pale); color: var(--green); }
+.ml-agreement.disagree { background: #fff3cd; color: #8a6100; }
+.ml-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ml-metric {
+  background: var(--white);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: var(--radius);
+  min-width: 0;
+  padding: 9px 10px;
+}
+.ml-label {
+  color: var(--gray-600);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.ml-metric strong {
+  color: var(--gray-800);
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ml-empty {
+  color: var(--gray-600);
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (max-width: 800px) {
+  .ml-title-row { align-items: flex-start; flex-direction: column; }
+  .ml-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Top3 카드 ── */
 .top3-list { display: flex; flex-direction: column; gap: 16px; }
 
@@ -298,5 +375,56 @@ select:focus, input[type="number"]:focus {
 .tag-price { background: var(--green-pale); color: var(--green); font-weight: 700; }
 .club-link { display: inline-block; color: var(--blue); font-size: 12px; font-weight: 700; margin-top: 8px; text-decoration: none; }
 .club-link:hover { text-decoration: underline; }
+
+.price-toggle {
+  margin-top: 10px;
+  width: 100%;
+  border: 1px solid var(--green-light);
+  border-radius: var(--radius);
+  background: var(--green-bg);
+  color: var(--green);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+.price-toggle:hover { background: var(--green-pale); }
+.price-list { display: none; flex-direction: column; gap: 7px; margin-top: 8px; }
+.price-list.open { display: flex; }
+.price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 9px 10px;
+}
+.price-row.lowest { border-color: #f9c74f; background: var(--gold-pale); }
+.price-info { min-width: 0; }
+.price-seller { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--gray-800); }
+.price-product { color: var(--gray-600); font-size: 11px; margin-top: 2px; overflow-wrap: anywhere; }
+.lowest-badge {
+  background: #f9c74f;
+  border-radius: 5px;
+  color: #7d5a00;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 5px;
+}
+.price-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.price-value { color: var(--green); font-size: 13px; font-weight: 900; white-space: nowrap; }
+.price-link { color: var(--blue); font-size: 12px; font-weight: 800; text-decoration: none; }
+.price-link:hover { text-decoration: underline; }
+.price-loading,
+.price-empty {
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius);
+  color: var(--gray-600);
+  font-size: 12px;
+  padding: 9px 10px;
+}
 
 .empty-state { text-align: center; padding: 28px 16px; color: var(--gray-600); font-size: 14px; line-height: 1.7; }

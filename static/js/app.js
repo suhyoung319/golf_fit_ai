@@ -44,6 +44,7 @@ const resultSection  = document.getElementById("result-section");
 const resClubType    = document.getElementById("res-club-type");
 const resHandicap    = document.getElementById("res-handicap");
 const resSkill       = document.getElementById("res-skill");
+const mlResultCard   = document.getElementById("ml-result-card");
 const top3List       = document.getElementById("top3-list");
 
 // ── 클럽 타입 선택 ─────────────────────────────────────────────────
@@ -86,6 +87,32 @@ function collectPayload(clubType) {
   return data;
 }
 
+function formatWon(value) {
+  return `${new Intl.NumberFormat("ko-KR").format(value)}원`;
+}
+
+function renderPriceRows(prices) {
+  if (!prices?.length) {
+    return `<div class="price-empty">등록된 판매처가 없습니다.</div>`;
+  }
+
+  return prices.map((p, index) => `
+    <div class="price-row ${index === 0 ? "lowest" : ""}">
+      <div class="price-info">
+        <div class="price-seller">
+          ${p.seller_name}
+          ${index === 0 ? `<span class="lowest-badge">최저가</span>` : ""}
+        </div>
+        <div class="price-product">${p.product_name}</div>
+      </div>
+      <div class="price-actions">
+        <div class="price-value">${formatWon(p.price)}</div>
+        <a class="price-link" href="${p.product_url}" target="_blank" rel="noopener">구매</a>
+      </div>
+    </div>
+  `).join("");
+}
+
 // ── Top3 카드 렌더링 ───────────────────────────────────────────────
 function renderClubs(clubs) {
   if (!clubs?.length) return `<p style="font-size:13px;color:var(--gray-600)">클럽 데이터 없음</p>`;
@@ -103,9 +130,7 @@ function renderClubs(clubs) {
         <span>컨트롤 ${c.control_score}</span>
         <span>스핀 ${c.spin_score}</span>
       </div>`;
-    const buy = c.purchase_url
-      ? `<a class="club-link" href="${c.purchase_url}" target="_blank" rel="noopener">구매 정보 보기</a>`
-      : "";
+    const pricesId = `prices-${c.id}`;
     return `
       <div class="club-card">
         <div class="club-header">
@@ -120,7 +145,10 @@ function renderClubs(clubs) {
         <div class="club-meta">
           <span class="tag tag-shaft">샤프트 ${shaft}</span>${flex}${loft}${launch}${price}
         </div>
-        ${buy}
+        <button class="price-toggle" type="button" onclick="togglePrices(${c.id}, '${pricesId}', this)">
+          최저가 보기
+        </button>
+        <div class="price-list" id="${pricesId}"></div>
       </div>`;
   }).join("");
 }
@@ -167,6 +195,52 @@ function renderRankCard(item) {
     </div>`;
 }
 
+function renderMlResult(data) {
+  if (!mlResultCard) return;
+
+  if (!data.ml_prediction) {
+    mlResultCard.className = "ml-result-card unavailable";
+    mlResultCard.innerHTML = `
+      <div class="ml-title-row">
+        <h3>ML 기반 예측 결과</h3>
+      </div>
+      <p class="ml-empty">ML 모델을 불러오지 못해 Rule 기반 추천만 표시됩니다.</p>
+    `;
+    return;
+  }
+
+  const confidence = data.ml_prediction.confidence;
+  const confidenceText = typeof confidence === "number"
+    ? `${(confidence * 100).toFixed(1)}%`
+    : "-";
+  const agreementText = data.ml_agreement
+    ? "Rule 1순위와 일치"
+    : "Rule 1순위와 불일치";
+  const agreementClass = data.ml_agreement ? "agree" : "disagree";
+
+  mlResultCard.className = `ml-result-card ${agreementClass}`;
+  mlResultCard.innerHTML = `
+    <div class="ml-title-row">
+      <h3>ML 기반 예측 결과</h3>
+      <span class="ml-agreement ${agreementClass}">${agreementText}</span>
+    </div>
+    <div class="ml-grid">
+      <div class="ml-metric">
+        <span class="ml-label">예측 카테고리</span>
+        <strong>${data.ml_prediction.category_name}</strong>
+      </div>
+      <div class="ml-metric">
+        <span class="ml-label">예측 신뢰도</span>
+        <strong>${confidenceText}</strong>
+      </div>
+      <div class="ml-metric">
+        <span class="ml-label">Rule 1순위</span>
+        <strong>${data.rule_top1 ?? "-"}</strong>
+      </div>
+    </div>
+  `;
+}
+
 function toggleClubs(btnId, listId) {
   const btn  = document.getElementById(btnId);
   const list = document.getElementById(listId);
@@ -176,6 +250,37 @@ function toggleClubs(btnId, listId) {
 }
 window.toggleClubs = toggleClubs;
 
+async function togglePrices(clubId, listId, btn) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+
+  if (list.classList.contains("open")) {
+    list.classList.remove("open");
+    btn.textContent = "최저가 보기";
+    return;
+  }
+
+  list.classList.add("open");
+  btn.textContent = "가격 접기";
+
+  if (list.dataset.loaded === "true") return;
+
+  list.innerHTML = `<div class="price-loading">가격 정보를 불러오는 중...</div>`;
+  try {
+    const resp = await fetch(`/api/clubs/${clubId}/prices`);
+    if (!resp.ok) {
+      list.innerHTML = `<div class="price-empty">가격 정보를 불러오지 못했습니다.</div>`;
+      return;
+    }
+    const prices = await resp.json();
+    list.innerHTML = renderPriceRows(prices);
+    list.dataset.loaded = "true";
+  } catch (err) {
+    list.innerHTML = `<div class="price-empty">네트워크 오류: ${err.message}</div>`;
+  }
+}
+window.togglePrices = togglePrices;
+
 // ── 결과 렌더링 ────────────────────────────────────────────────────
 function renderResult(data) {
   resClubType.textContent = CLUB_TYPE_KO[data.club_type] ?? data.club_type;
@@ -183,6 +288,7 @@ function renderResult(data) {
   const skillLabel = SKILL_KO[data.calculated_skill] ?? data.calculated_skill;
   resSkill.innerHTML =
     `<span class="skill-badge ${data.calculated_skill}">${skillLabel}</span>`;
+  renderMlResult(data);
 
   if (!data.recommendations?.length) {
     top3List.innerHTML = `<div class="empty-state">추천 결과가 없습니다.<br>seed_data.py 실행 여부를 확인하세요.</div>`;

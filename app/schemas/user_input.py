@@ -102,6 +102,16 @@ class ClubResponse(BaseModel):
     model_config = {"from_attributes": True, "protected_namespaces": ()}
 
 
+class ClubPriceResponse(BaseModel):
+    id:           int
+    club_id:      int
+    seller_name:  str
+    product_name: str
+    price:        int
+    product_url:  str
+    model_config = {"from_attributes": True}
+
+
 class RecommendationItem(BaseModel):
     """단일 추천 항목 — rank·score·matched_traits·reason·clubs 포함."""
     rank:           int

@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
+from app.models.club import Club
+from app.models.club_price import ClubPrice
 from app.schemas.user_input import (
     DriverInput, WoodInput, UtilityInput,
     IronInput, WedgeInput, PutterInput,
-    Top3Response,
+    ClubPriceResponse, Top3Response,
 )
 from app.services.recommendation import (
     recommend_driver, recommend_wood, recommend_utility,
@@ -12,6 +14,20 @@ from app.services.recommendation import (
 )
 
 router = APIRouter()
+
+
+@router.get("/clubs/{club_id}/prices", response_model=list[ClubPriceResponse], summary="클럽 최저가 목록")
+def club_prices(club_id: int, db: Session = Depends(get_db)):
+    club = db.query(Club).filter(Club.id == club_id).first()
+    if not club:
+        raise HTTPException(status_code=404, detail="Club not found")
+
+    return (
+        db.query(ClubPrice)
+        .filter(ClubPrice.club_id == club_id)
+        .order_by(ClubPrice.price.asc())
+        .all()
+    )
 
 
 @router.post("/recommend/driver", response_model=Top3Response, summary="드라이버 Top3 추천",

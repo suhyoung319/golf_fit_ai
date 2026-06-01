@@ -3,6 +3,7 @@
 from app.models.user import User
 from app.models.user_golf_profile import UserGolfProfile
 from app.models.club import Club, ClubCategory
+from app.models.club_price import ClubPrice
 from app.models.recommendation import Recommendation, recommendation_clubs
 
 __all__ = [
@@ -10,6 +11,7 @@ __all__ = [
     "UserGolfProfile",
     "Club",
     "ClubCategory",
+    "ClubPrice",
     "Recommendation",
     "recommendation_clubs",
 ]
